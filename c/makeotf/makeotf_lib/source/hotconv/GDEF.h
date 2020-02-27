@@ -11,6 +11,11 @@
 #define GDEF_ TAG('G', 'D', 'E', 'F')
 #define kMaxMarkAttachClasses 15
 
+//FONTLAB
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Standard functions */
 void GDEFNew(hotCtx g);
 int GDEFFill(hotCtx g);
@@ -28,5 +33,10 @@ void addLigCaretEntryGDEF(hotCtx g, GNode *glyphNode, unsigned short* caretValue
 unsigned short addGlyphMarkClassGDEF(hotCtx g, GNode *markClass);
 
 unsigned short addMarkSetClassGDEF(hotCtx g, GNode *markClass);
+
+//FONTLAB
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HOTCONV_GDEF_H */

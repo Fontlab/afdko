@@ -423,7 +423,7 @@ struct hotCtx_ {
         vheaCtx vhea;
         vmtxCtx vmtx;
     } ctx;
-    dnaCtx dnaCtx;
+    dnaCtxPtr dnaCtx;
     dnaDCL(char, data); /* CFF data object buffer */
     dnaDCL(char, tmp);  /* Temporary conversion buffer */
     dnaDCL(char, note); /* Buffer for accumulated messages */

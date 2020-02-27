@@ -11,8 +11,8 @@
  */
 
 #define ANTLR_VERSION 13333
-#include "pcctscfg.h"
-#include "pccts_stdio.h"
+//#include "pcctscfg.h" // FONTLAB
+//#include "pccts_stdio.h" // FONTLAB
 
 /* --- This section will be included in all feat*.c files created. --- */
 
@@ -56,6 +56,13 @@ void zzcr_attr(Attrib *attr, int type, char *text);
 
 ANTLR_INFO
 
+//FONTLAB
+void InitGlobalVars()
+{
+  zzasp = ZZA_STACKSIZE;
+}
+//FONTLAB OVER
+
 void featureFile(void);
 
 #include "feat.c"
@@ -83,7 +90,8 @@ int allowNotdef;
             zzmatch(T_GNAME);
             gname = zzaCur;
 
-            _retv = featMapGName2GID(g, gname.text, allowNotdef);
+            _retv = featMapGName2GID(g, gname.text, allowNotdef, strchr(gname.text, '-') ? FALSE : TRUE); // FONTLAB
+//            _retv = featMapGName2GID(g, gname.text, allowNotdef);
             if (tok != NULL)
                 strcpy(tok, gname.text);
             zzCONSUME;
@@ -163,7 +171,8 @@ char *gcname;
                                     if ((setwd1[LA(1)] & 0x2)) {
                                         gid = glyph(p, TRUE);
 
-                                        if (gid == GID_UNDEF) {
+                                        //FONTLAB
+                                        if (gid == GID_UNDEF && strcmp(p, ".notdef") != 0) {
                                             char *secondPart = p;
                                             char *firstPart = p;
                                             /* it might be a range.*/
@@ -173,8 +182,8 @@ char *gcname;
                                             if (secondPart != NULL) {
                                                 *secondPart = '\0';
                                                 secondPart++;
-                                                gid = featMapGName2GID(g, firstPart, FALSE);
-                                                endgid = featMapGName2GID(g, secondPart, FALSE);
+                                                gid = featMapGName2GID(g, firstPart, FALSE, TRUE); // FONTLAB
+                                                endgid = featMapGName2GID(g, secondPart, FALSE, TRUE); // FONTLAB
                                                 if (gid != 0 && endgid != 0) {
                                                     gcAddRange(gid, endgid, firstPart, secondPart);
                                                 } else {
@@ -182,7 +191,7 @@ char *gcname;
                                                 }
 
                                             } else {
-                                                featMapGName2GID(g, firstPart, FALSE);
+                                                featMapGName2GID(g, firstPart, FALSE, FALSE); // FONTLAB
                                                 hotMsg(g, hotFATAL, "aborting because of errors");
                                             }
                                             zzEXIT(zztasp4);

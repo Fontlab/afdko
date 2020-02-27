@@ -100,6 +100,23 @@ static void saveTime(longDateTime ldt, struct tm *tm) {
              tm->tm_hour, tm->tm_min, tm->tm_sec);
 }
 
+//FONTLAB
+void headSetTime(hotCtx g, unsigned long *tt_time)
+{
+  headCtx h = g->ctx.head;
+
+  char *ldt = h->tbl.created;
+  unsigned long elapsed = tt_time[0];
+
+  ldt[0] = ldt[1] = ldt[2] = ldt[3] = 0;
+
+  ldt[4] = (char)(elapsed>>24);
+  ldt[5] = (char)(elapsed>>16);
+  ldt[6] = (char)(elapsed>>8);
+  ldt[7] = (char)elapsed;
+}
+//FONTLAB OVER
+
 int headFill(hotCtx g) {
     headCtx h = g->ctx.head;
 
@@ -109,7 +126,8 @@ int headFill(hotCtx g) {
     h->tbl.magicNumber = 0x5F0F3CF5;
     h->tbl.flags = head_BASELINE_0 | head_LSB_0;
     h->tbl.unitsPerEm = g->font.unitsPerEm;
-    saveTime(h->tbl.created, &g->time);
+    //FONTLAB
+    //  saveTime(h->tbl.created, &g->time);
     saveTime(h->tbl.modified, &g->time);
     h->tbl.xMin = g->font.bbox.left;
     h->tbl.yMin = g->font.bbox.bottom;

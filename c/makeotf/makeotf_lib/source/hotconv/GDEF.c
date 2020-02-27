@@ -242,7 +242,9 @@ void GDEFFree(hotCtx g) {
 
     dnaFREE(h->glyphClasses);
     if (h->glyphClassTable != NULL) {
-        otlTableFree(g, h->glyphClassTable);
+      otlTableFreeClassDef(g, h->glyphClassTable); // FONTLAB memleaks
+      otlTableFree(g, h->glyphClassTable);
+      h->glyphClassTable = NULL; // FONTLAB memleaks
     }
 
     for (i = 0; i < h->attachEntries.cnt; i++) {

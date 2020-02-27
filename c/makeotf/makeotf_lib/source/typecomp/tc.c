@@ -18,6 +18,9 @@
 #include <stdarg.h>
 #include <string.h>
 
+//FONTLAB
+#include <locale.h>
+
 /* CFF header */
 typedef struct {
     unsigned char major;   /* Major version number */
@@ -983,6 +986,7 @@ void tcFree(tcCtx g) {
     freeFonts(g);
 
     dnaFREE(h->set);
+    dnaFree(g->ctx.dnaCtx); // FONTLAB
     MEM_FREE(g, h);
     g->cb.free(g->cb.ctx, g); /* Free context */
 }
@@ -998,7 +1002,17 @@ void tcAddFont(tcCtx g, long flags) {
 
     g->flags = flags;
     font->filename = (g->cb.psId == NULL) ? "?" : g->cb.psId(g->cb.ctx);
+    
+    //FONTLAB
+    const char* local = setlocale(LC_NUMERIC, NULL);
+    if (!local || strcmp(local, "C"))
+      setlocale(LC_NUMERIC, "C");
+  
     parseFont(g, font);
+    
+    //FONTLAB
+    if (local && strcmp(local, "C"))
+      setlocale(LC_NUMERIC, local);
 }
 
 /* Add additional copyright notice to font set */

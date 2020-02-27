@@ -10,8 +10,8 @@
  */
 
 #define ANTLR_VERSION 13333
-#include "pcctscfg.h"
-#include "pccts_stdio.h"
+//#include "pcctscfg.h"
+//#include "pccts_stdio.h"
 
 /* --- This section will be included in all feat*.c files created. --- */
 

@@ -10,6 +10,11 @@
 
 #define GPOS_ TAG('G', 'P', 'O', 'S')
 
+//FONTLAB
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Standard functions */
 
 void GPOSNew(hotCtx g);
@@ -17,6 +22,9 @@ int GPOSFill(hotCtx g);
 void GPOSWrite(hotCtx g);
 void GPOSReuse(hotCtx g);
 void GPOSFree(hotCtx g);
+
+//FONTLAB
+unsigned GPOSGetMaxContext(hotCtx g);
 
 /* Supplementary functions (See otl.h for script, language, feature,
    and lookup flag definitions) */
@@ -52,5 +60,10 @@ int GPOSSubtableBreak(hotCtx g);
 void GPOSAddPair(hotCtx g, void *si, GNode *first, GNode *second, char *filename, int lineNum);
 
 void GPOSPrintAFMKernData(hotCtx g);
+
+//FONTLAB
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HOTCONV_GPOS_H */

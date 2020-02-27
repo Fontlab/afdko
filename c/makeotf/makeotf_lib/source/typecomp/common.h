@@ -142,7 +142,7 @@ struct tcCtx_ {
     uint32_t maxNumSubrs;
     SubrParseData *spd; /* Subroutinizer parse data */
     struct {            /* --- Module contexts */
-        dnaCtx dnaCtx;
+        dnaCtxPtr dnaCtx;
         charsetCtx charset;
         csCtx cs;
         encodingCtx encoding;

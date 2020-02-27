@@ -544,6 +544,14 @@ void GPOSWrite(hotCtx g) {
     }
 }
 
+//FONTLAB
+unsigned GPOSGetMaxContext(hotCtx g)
+{
+  GPOSCtx h = g->ctx.GPOS;
+  return h->maxContext;
+}
+//FONTLAB END
+
 void GPOSReuse(hotCtx g) {
     GPOSCtx h = g->ctx.GPOS;
     int i;
@@ -560,6 +568,8 @@ void GPOSReuse(hotCtx g) {
         if (sub->extension.use) {
             freeExtension(g, h, sub); /* In addition to the following frees: */
         }
+        //FONTLAB
+        if (sub->tbl) {
         switch (sub->lkpType) {
             case GPOSSingle:
                 freeSinglePos(g, sub);
@@ -597,6 +607,7 @@ void GPOSReuse(hotCtx g) {
                 break;
         }
     }
+    } //FONTLAB
 
     h->new.rules.cnt = 0;
     h->new.markClassList.cnt = 0;
@@ -616,7 +627,9 @@ void GPOSReuse(hotCtx g) {
 
     h->maxContext = 0;
     h->hadError = 0;
-    otlTableReuse(g, h->otl);
+    //FONTLAB
+    if (h->otl)
+      otlTableReuse(g, h->otl);
 }
 
 void GPOSFree(hotCtx g) {
@@ -710,6 +723,8 @@ static void startNewSubtable(hotCtx g) {
     sub->lkpFlag = h->new.lkpFlag;
     sub->markSetIndex = h->new.markSetIndex;
     sub->label = h->new.label;
+    //FONTLAB
+    sub->tbl = NULL;
 
     sub->extension.use = h->new.useExtension;
     if (h->new.useExtension && (!IS_REF_LAB(h->new.label)) && (!hasFeatureParam)) {
@@ -747,7 +762,11 @@ void GPOSLookupBegin(hotCtx g, unsigned lkpType, unsigned lkpFlag, Label label,
                      short useExtension, unsigned short useMarkSetIndex) {
     GPOSCtx h = g->ctx.GPOS;
     SubtableInfo *newsi = &h->new;
-
+// FONTLAB
+    for (int i = 0; i < newsi->baseList.cnt; i++) {
+        dnaFREE(newsi->baseList.array[i].anchorMarkInfo);
+    }
+// FONTLAB OVER
     DF(2, (stderr,
            " { GPOS lkpType=%s%d lkpFlag=%d label=%x\n",
            useExtension ? "EXTENSION:" : "", lkpType, lkpFlag, label));
@@ -1525,26 +1544,35 @@ static void writeSinglePos(hotCtx g, GPOSCtx h, Subtable *sub) {
 }
 
 static void freeSinglePos1(hotCtx g, Subtable *sub) {
-    SinglePosFormat1 *fmt = sub->tbl;
+  SinglePosFormat1 *fmt = sub->tbl;
+  //FONTLAB
+  if (fmt)
     MEM_FREE(g, fmt);
 }
 
 static void freeSinglePos2(hotCtx g, Subtable *sub) {
-    SinglePosFormat2 *fmt = sub->tbl;
+  SinglePosFormat2 *fmt = sub->tbl;
+  //FONTLAB
+  if (fmt) {
     MEM_FREE(g, fmt->Value);
     MEM_FREE(g, fmt);
+  }
 }
 
 static void freeSinglePos(hotCtx g, Subtable *sub) {
-    switch (*(unsigned short *)sub->tbl) {
-        case 1:
-            freeSinglePos1(g, sub);
-            break;
-
-        case 2:
-            freeSinglePos2(g, sub);
-            break;
-    }
+  //FONTLAB
+  if (!sub || !sub->tbl)
+    return;
+  
+  switch (*(unsigned short *)sub->tbl) {
+    case 1:
+      freeSinglePos1(g, sub);
+      break;
+      
+    case 2:
+      freeSinglePos2(g, sub);
+      break;
+  }
 }
 
 /* ---------------------------- Pair Adjustment ---------------------------- */
@@ -1674,9 +1702,10 @@ static int validInClassDef(GPOSCtx h, int classDefInx, GNode *gc,
                 return -1; /* One of the glyphs already exists in a class */
             }
         }
-        /* Classes start numbering from 0 for ClassDef1, 1 for ClassDef2 */
-        *class = (unsigned short)((classDefInx == 0) ? cdef->classInfo.cnt
-                                                     : cdef->classInfo.cnt + 1);
+        /* Classes start numbering from 0 for ClassDef1, 1 for ClassDef2 */// FONTLAB: now act equal for left and right classes
+     //   *class = (unsigned short)((classDefInx == 0) ? cdef->classInfo.cnt
+     //                                                : cdef->classInfo.cnt + 1);
+        *class = (unsigned short)(cdef->classInfo.cnt + 1);
         *insert = 1;
         return (int)inx;
     }
@@ -1689,9 +1718,9 @@ static void insertInClassDef(GPOSCtx h, int classDefInx, GNode *gc, int inx,
     ClassDef *cdef = &h->classDef[classDefInx];
     ClassInfo *ci = INSERT(cdef->classInfo, inx);
 
-    /* Classes start numbering from 0 for ClassDef1, 1 for ClassDef2 */
-    ci->class = (classDefInx == 0) ? cdef->classInfo.cnt - 1
-                                   : cdef->classInfo.cnt;
+    /* Classes start numbering from 0 for ClassDef1, 1 for ClassDef2 */ // FONTLAB: now act equal for left and right classes
+//    ci->class = (classDefInx == 0) ? cdef->classInfo.cnt - 1
+//                                   : cdef->classInfo.cnt;
     ci->class = class;
     ci->gc = gc;
 
@@ -2020,7 +2049,9 @@ static void addPosRule(hotCtx g, GPOSCtx h, SubtableInfo *si, GNode *targ, char 
 
             rule = dnaNEXT(si->rules);
             rule->targ = targ;
-        } else {
+        } 
+        else if (targ->metricsInfo) // FONTLAB
+        {
             if (targ->metricsInfo->cnt == 1) {
                 /* assume it is an xAdvance adjustment */
                 GPOSAddSingle(g, si, targ, 0, 0, targ->metricsInfo->metrics[0], 0);
@@ -2552,7 +2583,9 @@ static Offset classDefMake(hotCtx g, GPOSCtx h, otlTbl t, int cdefInx,
     if (g->convertFlags & HOT_DO_NOT_OPTIMIZE_KERN)
         *count = (unsigned short)cdef->classInfo.cnt + 1;
     else
-        *count = (unsigned short)((cdefInx == 0) ? cdef->classInfo.cnt : cdef->classInfo.cnt + 1);
+      //    *count = (unsigned short)((cdefInx == 0) ? cdef->classInfo.cnt : cdef->classInfo.cnt + 1);  // FONTLAB: now act equal for left and right classes
+        *count = (unsigned short)(cdef->classInfo.cnt + 1);
+    
     otlClassBegin(g, t);
     for (i = 0; i < cdef->classInfo.cnt; i++) {
         ClassInfo *ci = &cdef->classInfo.array[i];
@@ -3332,6 +3365,9 @@ static void freePairPos1(hotCtx g, Subtable *sub) {
     int i;
     PairPosFormat1 *fmt = sub->tbl;
 
+    if (!fmt) //FONTLAB
+      return;
+  
     /* Free pair sets */
     for (i = 0; i < fmt->PairSetCount; i++) {
         MEM_FREE(g, fmt->PairSet_[i].PairValueRecord);
@@ -3349,7 +3385,12 @@ static void freePairPos1(hotCtx g, Subtable *sub) {
 static void freePairPos2(hotCtx g, Subtable *sub) {
     PairPosFormat2 *fmt = sub->tbl;
 
-    MEM_FREE(g, fmt->Class1Record[0].Class2Record);
+    if (!fmt) //FONTLAB
+      return;
+  
+    if (fmt->Class1Record != NULL) {
+      MEM_FREE(g, fmt->Class1Record[0].Class2Record);
+    }
     MEM_FREE(g, fmt->Class1Record);
 
     MEM_FREE(g, fmt);
@@ -3358,6 +3399,14 @@ static void freePairPos2(hotCtx g, Subtable *sub) {
 /* Free pair positioning subtable */
 
 static void freePairPos(hotCtx g, Subtable *sub) {
+    if (!sub || !sub->tbl) //FONTLAB
+    {
+      fprintf(stderr, "Format-specific data in subtable is NULL\n");
+      return;
+    }
+    
+    // FONTLAB OVER
+
     switch (*(unsigned short *)sub->tbl) {
         case 1:
             freePairPos1(g, sub);
@@ -3380,6 +3429,9 @@ static void freeFeatParam(hotCtx g, Subtable *sub) {
 static void freeChain3(hotCtx g, GPOSCtx h, Subtable *sub) {
     ChainContextPosFormat3 *fmt = sub->tbl;
 
+    if (!fmt) //FONTLAB
+      return;
+  
     if (fmt->Backtrack != NULL) {
         MEM_FREE(g, fmt->Backtrack);
     }
@@ -3398,6 +3450,9 @@ static void freeChain3(hotCtx g, GPOSCtx h, Subtable *sub) {
 /* Free Chain substitution format table */
 
 static void freeChain(hotCtx g, GPOSCtx h, Subtable *sub) {
+    if (!sub || !sub->tbl) //FONTLAB
+      return;
+  
     switch (*(unsigned short *)sub->tbl) {
         case 1:
             break;
@@ -3605,7 +3660,9 @@ static void checkBaseAnchorConflict(hotCtx g, BaseGlyphRec *baseGlyphArray, long
     }
 
     /* Sort by GID, anchor count, and then by anchor value */
-    qsort(baseGlyphArray, recCnt, sizeof(BaseGlyphRec), cmpBaseRec);
+    if (!isMarkToLigature) //FONTLAB: If it's ligatures, we shouldn't change the order
+      qsort(baseGlyphArray, recCnt, sizeof(BaseGlyphRec), cmpBaseRec);
+
     prev = &(baseGlyphArray[0]);
     cur = &(baseGlyphArray[1]);
     last = &(baseGlyphArray[recCnt - 1]);
@@ -3967,16 +4024,19 @@ static void fillMarkToBase(hotCtx g, GPOSCtx h) {
 
             for (j = 0; j < fmt->ClassCount; j++) {
                 if (baseAnchorArray[j] == 0xFFFFFFFFL) {
-                    char msg[1024];
-                    baseAnchorArray[j] = 0xFFFFFFFFL;
-                    featGlyphDump(g, baseRec->gid, '\0', 0);
-                    if (h->new.fileName != NULL) {
-                        sprintf(msg, " [%s line %ld]", h->new.fileName, baseRec->lineNum);
-                    } else {
-                        msg[0] = '\0';
-                    }
-                    hotMsg(g, hotWARNING, "MarkToBase or MarkToMark error in %s. Glyph '%s' does not have an anchor point for a mark class that was used in a previous statement in the same lookup table. Setting the anchor point offset to 0.",
-                        g->error_id_text, g->note.array, msg);
+//FONTLAB: such a situation takes place with <anchor 0 0> avoided and looks proper...
+                  baseAnchorArray[j] = getAnchoOffset(g, &kDefaultAnchor, fmt); /* this returns the offset from the start of the anchor list. To be adjusted later*/
+                  featGlyphDump(g, baseRec->gid, '\0', 0);
+//                    char msg[1024];
+//                    baseAnchorArray[j] = 0xFFFFFFFFL;
+//                    featGlyphDump(g, baseRec->gid, '\0', 0);
+//                    if (h->new.fileName != NULL) {
+//                        sprintf(msg, " [%s line %ld]", h->new.fileName, baseRec->lineNum);
+//                    } else {
+//                        msg[0] = '\0';
+//                    }
+//                    hotMsg(g, hotWARNING, "MarkToBase or MarkToMark error in %s. Glyph '%s' does not have an anchor point for a mark class that was used in a previous statement in the same lookup table. Setting the anchor point offset to 0.",
+//                        g->error_id_text, g->note.array, msg);
                 }
             }
         }
@@ -4053,7 +4113,7 @@ static void writeMarkToBase(hotCtx g, GPOSCtx h, Subtable *sub) {
     for (i = 0; i < fmt->BaseArray_.BaseCount; i++) {
         BaseRecord *baseRec = &fmt->BaseArray_.BaseRecord[i];
         for (j = 0; j < markClassCnt; j++) {
-            if (baseRec->BaseAnchorArray[j] == 0xFFFFFFFFL)
+            if (baseRec->BaseAnchorArray[j] == 0 || baseRec->BaseAnchorArray[j] == 0xFFFFFFFFL) // FONTLAB
                 OUT2((Offset)0);
             else
                 OUT2((Offset)(baseRec->BaseAnchorArray[j] + anchorListOffset));
@@ -4084,6 +4144,9 @@ static void freeMarkToBase(hotCtx g, Subtable *sub) {
     long i;
     MarkBasePosFormat1 *fmt = sub->tbl;
 
+    if (!fmt) //FONTLAB
+      return;
+  
     for (i = 0; i < fmt->BaseArray_.BaseCount; i++) {
         BaseRecord *baseRec = &fmt->BaseArray_.BaseRecord[i];
         MEM_FREE(g, baseRec->BaseAnchorArray);
@@ -4532,6 +4595,10 @@ static void writeCursive(hotCtx g, GPOSCtx h, Subtable *sub) {
 
 static void freeCursive(hotCtx g, Subtable *sub) {
     CursivePosFormat1 *fmt = sub->tbl;
+
+    if (!fmt) //FONTLAB
+      return;
+  
     MEM_FREE(g, fmt->EntryExitRecord);
     dnaFREE(fmt->anchorList);
     MEM_FREE(g, fmt);
@@ -4578,5 +4645,9 @@ static void freeExtension(hotCtx g, GPOSCtx h, Subtable *sub) {
 
     otlTableReuse(g, sub->extension.otl);
     otlTableFree(g, sub->extension.otl);
+ 
+    if (!fmt) //FONTLAB
+      return;
+  
     MEM_FREE(g, fmt);
 }

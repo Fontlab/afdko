@@ -47,6 +47,9 @@ int zzbufovf;                                              /* indicates that buf
 int zzcharfull = 0;
 static zzchar_t *zznextpos; /* points to next available position in zzlextext*/
 static int zzclass;
+//FONTLAB
+int err_fatal_linenum = -1;
+
 
 #ifdef __USE_PROTOS
 void zzerrstd(const char *);
@@ -66,11 +69,14 @@ static FILE *zzstream_in = 0;
 static int (*zzfunc_in)(void) = zzerr_in;
 static zzchar_t *zzstr_in = 0;
 
-#ifdef USER_ZZMODE_STACK
+
+//FONTLAB
+//#ifdef USER_ZZMODE_STACK
 int zzauto = 0;
-#else
-static int zzauto = 0;
-#endif
+//#else
+//static int zzauto = 0;
+//#endif
+
 static int zzadd_erase;
 static char zzebuf[70];
 

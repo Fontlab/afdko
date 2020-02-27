@@ -9,6 +9,11 @@
 
 #define cmap_ TAG('c', 'm', 'a', 'p')
 
+//FONTLAB
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* cmap platform/script codes */
 /* Unicode */
 #define cmap_UNI 0           /* Platform: Unicode */
@@ -53,5 +58,10 @@ void cmapEndUVSEncoding(hotCtx g);
 
 void cmapPointToPreviousEncoding(hotCtx g, unsigned platform,
                                  unsigned platformSpecific);
+
+//FONTLAB
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HOTCONV_CMAP_H */

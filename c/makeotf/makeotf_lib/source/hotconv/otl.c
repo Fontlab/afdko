@@ -428,6 +428,15 @@ static void coverageNew(hotCtx g, otlTbl t) {
 
 /* Fill format 1 table */
 static CoverageFormat1 *fillCoverage1(hotCtx g, unsigned nGlyphs, GID *glyph) {
+    
+    // FONTLAB
+    if (nGlyphs == 0)
+    {
+      hotMsg(g, hotFATAL, "empty coverage");
+      return NULL;
+    }
+    // FONTLAB OVER
+
     unsigned int i;
     unsigned int dstIndex;
     CoverageFormat1 *fmt = MEM_NEW(g, sizeof(CoverageFormat1)); /* This may be more than we need, because we skip duplicate glyph IDs, but there's no harm in that. */
@@ -1575,7 +1584,9 @@ static Offset fillFeatureList(hotCtx g, otlTbl t) {
     /* This works because prepFeature has sorted the subtables so that anon subtables are last, preceded by Stand-Alone subtables */
     int spanLimit = t->subtable.cnt - (t->nAnonSubtables + t->nStandAloneSubtables);
 
-    nFeatures = spanLimit ? t->subtable.array[spanLimit - 1].index.feature + 1 : 0;
+    //FONTLAB
+      nFeatures = (spanLimit <= 0) ? 0 : t->subtable.array[spanLimit - 1].index.feature + 1;
+//    nFeatures = spanLimit ? t->subtable.array[spanLimit - 1].index.feature + 1 : 0;
     /* Allocate features */
     t->tbl.FeatureList_.FeatureCount = nFeatures;
     t->tbl.FeatureList_.FeatureRecord =
@@ -1994,6 +2005,43 @@ void otlTableReuse(hotCtx g, otlTbl t) {
     classReuse(g, t);
     t->nStandAloneSubtables = t->nAnonSubtables = t->nRefLookups = t->nFeatParams = 0;
 }
+
+//FONTLAB
+void otlTableFreeClassDef(hotCtx g, otlTbl t)
+{
+  // FONTLAB: memory leaks in GDEF are corrected
+  //freeClass(g, &t->class.new->tbl);
+
+  if (t == NULL)
+  {
+    return;
+  }
+
+  if (t->class.new == NULL)
+  {
+    return;
+  }
+
+  unsigned short *ptbl = t->class.new->tbl;
+  if (!ptbl)
+  {
+    return;
+  }
+
+  switch (*ptbl)
+    {
+  case 1:
+    freeClass1(g, t->class.new->tbl);
+    break;
+  case 2:
+    freeClass2(g, t->class.new->tbl);
+    break;
+    }
+
+  MEM_FREE(g, t->class.new->tbl);
+  t->class.new->tbl = NULL;
+}
+//FONTLAB OVER
 
 void otlTableFree(hotCtx g, otlTbl t) {
     if (t == NULL) {

@@ -17,8 +17,8 @@ struct dnaCtx_ { /* Library context */
 };
 
 /* Validate client and create context. */
-dnaCtx dnaNew(ctlMemoryCallbacks *mem_cb, CTL_CHECK_ARGS_DCL) {
-    dnaCtx h;
+dnaCtxPtr dnaNew(ctlMemoryCallbacks *mem_cb, CTL_CHECK_ARGS_DCL) {
+    dnaCtxPtr h;
 
     /* Check client/library compatibility */
     if (CTL_CHECK_ARGS_TEST(DNA_VERSION)) {
@@ -26,7 +26,7 @@ dnaCtx dnaNew(ctlMemoryCallbacks *mem_cb, CTL_CHECK_ARGS_DCL) {
     }
 
     /* Allocate context */
-    h = (dnaCtx)mem_cb->manage(mem_cb, NULL, sizeof(struct dnaCtx_));
+    h = (dnaCtxPtr)mem_cb->manage(mem_cb, NULL, sizeof(struct dnaCtx_));
     if (h == NULL) {
         return NULL;
     }
@@ -40,7 +40,7 @@ dnaCtx dnaNew(ctlMemoryCallbacks *mem_cb, CTL_CHECK_ARGS_DCL) {
 }
 
 /* Free library context. */
-void dnaFree(dnaCtx h) {
+void dnaFree(dnaCtxPtr h) {
     if (h == NULL) {
         return;
     }
@@ -49,7 +49,7 @@ void dnaFree(dnaCtx h) {
 }
 
 /* Initialize dynamic array. */
-void dnaInit(dnaCtx h, void *object, size_t init, size_t incr, int check) {
+void dnaInit(dnaCtxPtr h, void *object, size_t init, size_t incr, int check) {
     dnaGeneric *da = (dnaGeneric *)object;
 
     if (check && da->size != 0) {
@@ -72,7 +72,7 @@ long dnaGrow(void *object, size_t elemsize, long index) {
     void *new_ptr;
     size_t new_size;
     dnaGeneric *da = (dnaGeneric *)object;
-    dnaCtx h = da->ctx;
+    dnaCtxPtr h = da->ctx;
 
     if (index < da->size || elemsize == 0) {
         return 0; /* Use existing allocation */
@@ -185,7 +185,7 @@ long dnaExtend(void *object, size_t elemsize, long length) {
 void dnaFreeObj(void *object) {
     dnaGeneric *da = (dnaGeneric *)object;
     if (da->size != 0) {
-        dnaCtx h = da->ctx;
+        dnaCtxPtr h = da->ctx;
         h->mem.manage(&h->mem, da->array, 0);
         da->size = 0;
     }

@@ -63,6 +63,10 @@ static int enumNames(nameCtx h, int index,
                      unsigned short platspecId,
                      unsigned short languageId,
                      unsigned short nameId) {
+    // FONTLAB
+    if (index < 0)
+      index = 0;
+
     for (; index < h->tbl.record.cnt; index++) {
         NameRecord *rec = &h->tbl.record.array[index];
 
@@ -186,6 +190,9 @@ static void addName(nameCtx h,
     if (index != -1) {
         /* Matching name found */
         rec = &h->tbl.record.array[index];
+        //FONTLAB
+        return;
+    
     } else {
         /* No matching name found; append name */
         rec = dnaNEXT(h->tbl.record);
@@ -334,8 +341,9 @@ static void addStdNames(nameCtx h, int win, int mac) {
     }
 
     /* Add PostScript name */
-    addStdNamePair(h, win, mac, HOT_NAME_FONTNAME,
-                   strlen(g->font.FontName.array), g->font.FontName.array);
+    //FONTLAB
+    //    addStdNamePair(h, win, mac, HOT_NAME_FONTNAME,
+    //                   strlen(g->font.FontName.array), g->font.FontName.array);
 }
 
 /* Delete a target name from list if the same as reference name. */
@@ -476,10 +484,14 @@ static void fillNames(nameCtx h) {
                              MATCH_ANY,
                              HOT_NAME_FAMILY);
 
-        if (tempString == NULL) {
-            hotMsg(h->g, hotFATAL, "I can't find a Family name for this font !");
-        }
-        addWinDfltName(h, HOT_NAME_FAMILY, strlen(tempString), tempString);
+        // FONTLAB - sometimes we should deal with fea files without full valid name table
+        /*
+                if (tempString == NULL) {
+                    hotMsg(h->g, hotFATAL, "I can't find a Family name for this font !");
+                }
+        */
+        if (tempString != NULL) // FONTLAB
+          addWinDfltName(h, HOT_NAME_FAMILY, strlen(tempString), tempString);
     }
 
     /**************************** First fill out all the Windows menu names */

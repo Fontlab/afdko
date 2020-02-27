@@ -236,6 +236,8 @@ void tcCompactFont(tcCtx g, long flags);
 
 #define TC_SUPPRESS_WIDTH_OPT     (1<<17) /* suppress width optimization in CFF: makes it easier to peek at charstrings with other tools */
 #define TC_VERBOSE      (1<<18) /* print all warnings and notes, including the annoyingly repetitive ones. */
+//FONTLAB
+#define TC_NOREORDER    (1<<19)  /* Do not reorder glyphs */
 
 int tcSetStats(tcCtx g, int gather);
 

@@ -7,6 +7,11 @@
 
 #include "common.h"
 
+//FONTLAB
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if HOT_DEBUG
 #define DF_LEVEL ((g->font.debug & HOT_DB_FEAT_2) ? 2 : ((g->font.debug & HOT_DB_FEAT_1) ? 1 : 0))
 #define DF(L, p)             \
@@ -121,6 +126,25 @@ int featFill(hotCtx g);
 void featReuse(hotCtx g);
 void featFree(hotCtx g);
 
+//FONTLAB
+typedef struct
+{
+  char *name;
+  GNode *startGlyph;
+} FeaGlyphClasses;
+
+void _getNamedGlyphClasses(hotCtx g, FeaGlyphClasses res[]);
+
+int featGetErrorLineNum(void);
+char *featGetErrorFileName(void);
+char *getLastStdErrMessage(void);
+char *getLastHotMessage(void);
+
+//FONTLAB - hotconv error correction - some global values should be reinit after previous unsuccessful (throw1 exit) fea-file parsing
+void reinitGlobals();
+
+//FONTLAB OVER
+
 /* --- Supplementary functions --- */
 GNode *featSetNewNode(hotCtx g, GID gid);
 void featRecycleNodes(hotCtx g, GNode *node);
@@ -164,5 +188,10 @@ int featValidateGPOSChain(hotCtx g, GNode *targ, int lookupType);
 #define kDEFAULT_COMPONENTCLASS_NAME "FDK_DEFAULT_COMPONENT_CLASS"
 
 #endif /* HOT_FEAT_SUPPORT */
+
+//FONTLAB
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HOTCONV_FEAT_H */

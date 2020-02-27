@@ -181,7 +181,8 @@ enum {
     hotNOTE,
     hotWARNING,
     hotERROR,
-    hotFATAL
+    hotFATAL,
+    hotFATALQUIT //FONTLAB
 };
 
 struct hotCallbacks_ {
@@ -304,6 +305,8 @@ struct hotCallbacks_ {
     void (*featClose)(void *ctx);
     void (*featAddAnonData)(void *ctx, char *data, long count,
                             unsigned long tag);
+    //FONTLAB
+    unsigned short (*featNoGlyph) (void *ctx, char *name);
 
     /* [Optional] These functions are called to handle feature file support.
    featOpen() is called to open either the main feature file for the font
@@ -409,6 +412,8 @@ char *hotReadFont(hotCtx g, int flags, int *psinfo, hotReadFontOverrides *fontOv
 #define HOT_SUBSET          (1<<13)
 #define HOT_SUPRESS__WIDTH_OPT (1<<14) /* suppress width optimization in CFF: makes it easier to poke at charstrings with other tools */
 #define HOT_VERBOSE            (1<<15) /* Print all warnings and notes: else suppress the most annoying ones. */
+//FONTLAB
+#define HOT_NOREORDER       (1<<16)    /* Keep glyph ordering */
 
 struct hotReadFontOverrides_           /* Record for instructions to modify font as it is read in. */
     {
@@ -764,9 +769,16 @@ int hotAddName(hotCtx g,
 #define HOT_NAME_DESCRIPTION    10
 #define HOT_NAME_VENDOR_URL     11
 #define HOT_NAME_DESIGNER_URL   12
+//FONTLAB
+#define HOT_NAME_LICENSE   			13
+#define HOT_NAME_LICENSE_URL    14
+
 #define HOT_NAME_PREF_FAMILY    16
 #define HOT_NAME_PREF_SUBFAMILY 17
 #define HOT_NAME_COMP_FULL      18
+//FONTLAB
+#define HOT_NAME_SAMPLE_TEXT		19
+
 #define HOT_NAME_WPF_FAMILY     21
 #define HOT_NAME_WPF_STYLE      22
 #define HOT_NAME_REG_LAST       HOT_NAME_WPF_STYLE
@@ -822,6 +834,9 @@ void hotConvert(hotCtx g);
 
    convertFlags is used to control the processing of the data. */
 
+//FONTLAB
+void hotReuse(hotCtx g);
+
 /* convertFlags values */
 #define HOT_ID2_CHAIN_CONTXT3         (1 << 0) /* Index the backup glyph node list   */
                                                /* backwards (relative to the spec)   */
@@ -863,6 +878,9 @@ void hotConvert(hotCtx g);
 
 /* hotFree() destroys the library context and all the resources allocated to
    it. It must be the last function called by a client of the library. */
+
+// FONTLAB
+#define HOT_CUSTOM_UNICODE (1 << 2)
 
 void hotFree(hotCtx g);
 

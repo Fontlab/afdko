@@ -1319,7 +1319,7 @@ int cmapFill(hotCtx g) {
     }
 
     if (!checkMacPlatform(h)) {
-        hotMsg(h->g, hotWARNING, "no Mac cmap specified");
+// FONTLAB        hotMsg(h->g, hotWARNING, "no Mac cmap specified");
     }
 
     h->tbl.version = cmap_VERSION;

@@ -22,6 +22,26 @@
 #include <math.h>
 #include <stdarg.h>
 
+//FONTLAB
+extern int	zzline;
+extern int err_fatal_linenum;
+#define ERR_MSG_LEN 4096
+char str_err_hotmsg[ERR_MSG_LEN];
+
+int featGetErrorLineNum(void)
+{
+//	fprintf(stderr, "line_assigned [%d]\n", err_fatal_linenum);
+  return err_fatal_linenum;
+}
+
+char *getLastHotMessage(void)
+{
+  return str_err_hotmsg;
+}
+
+//FONTLAB OVER
+
+
 /* Windows-specific macros */
 #define FAMILY_UNSET 255 /* Flags unset Windows Family field */
 #define ANSI_CHARSET 0
@@ -88,6 +108,16 @@ static void *hot_manage(ctlMemoryCallbacks *cb, void *old, size_t size) {
 }
 
 hotCtx hotNew(hotCallbacks *hotcb) {
+  //FONTLAB
+  {
+    void InitGlobalVars();
+
+    // Set an initial state. Otherwise, subsequent calls can produce
+    // an unpredictable result (for example, "Stack overflow" error)
+    InitGlobalVars();
+  }
+  //FONTLAB OVER
+
     hotCtx g = hotcb->malloc(hotcb->ctx, sizeof(struct hotCtx_));
     tcCallbacks tccb;
     time_t now;
@@ -382,6 +412,10 @@ char *hotReadFont(hotCtx g, int flags, int *psinfo, hotReadFontOverrides *fontOv
     } else {
         g->cb.getFinalGlyphName = NULL; /* suppresses renaming in feature file */
     }
+    //FONTLAB
+    if (flags & HOT_NOREORDER)
+      tcflags |= TC_NOREORDER; /* turn on  renaming in typecomp */
+    //FONTLAB OVER
     if (flags & HOT_SUBSET) {
         tcflags |= TC_SUBSET; /* turn on subsetting to GOADB list  in typecomp */
     }
@@ -1019,7 +1053,7 @@ static void setVBounds(hotCtx g) {
     }
 }
 
-static void hotReuse(hotCtx g) {
+void hotReuse(hotCtx g) {
     g->hadError = 0;
     g->convertFlags = 0;
 
@@ -1204,6 +1238,8 @@ void hotFree(hotCtx g) {
         }
     }
     dnaFREE(g->font.mm.instance);
+
+    dnaFree(g->dnaCtx); //FONTLAB memleaks
 
     MEM_FREE(g, g);
 }
@@ -1816,7 +1852,7 @@ void hotAddAnonTable(hotCtx g, unsigned long tag, hotAnonRefill refill) {
 /* Call fatal if hadError is set (this is set by a hotMsg() hotERROR call) */
 void hotQuitOnError(hotCtx g) {
     if (g->hadError) {
-        hotMsg(g, hotFATAL, "aborting because of errors");
+        hotMsg(g, hotFATALQUIT, "aborting because of errors"); // FONTLAB
     }
 }
 
@@ -1829,6 +1865,20 @@ void CDECL hotMsg(hotCtx g, int level, char *fmt, ...) {
     void (*fatal)(void *) = NULL; /* Suppress optimizer warning */
     void *ctx = NULL;             /* Suppress optimizer warning */
 
+    //FONTLAB
+    if (err_fatal_linenum < 0)
+    {
+      err_fatal_linenum = zzline;
+      str_err_hotmsg[0] = '\0';
+    }
+  
+    if (level == hotFATAL)
+      err_fatal_linenum = zzline;
+  
+    if (level == hotFATALQUIT)
+      level = hotFATAL;
+    //FONTLAB OVER
+  
     if (level == hotFATAL) {
         fatal = g->cb.fatal;
         ctx = g->cb.ctx;
@@ -1870,6 +1920,18 @@ void CDECL hotMsg(hotCtx g, int level, char *fmt, ...) {
             vsprintf(p, fmt, ap);
             va_end(ap);
             g->cb.message(g->cb.ctx, level, message);
+            //FONTLAB
+            int len = strlen(message);
+            if (len > (ERR_MSG_LEN - 2))
+              len = ERR_MSG_LEN - 2;
+      
+            int lenNow = strlen(str_err_hotmsg);
+            if ((lenNow + 2 + len) > ERR_MSG_LEN)
+              str_err_hotmsg[0] = '\0';
+      
+            strcat(str_err_hotmsg, message);
+            strcat(str_err_hotmsg, "\n");
+            //FONTLAB OVER
         }
     }
 

@@ -14,8 +14,17 @@
 
 #include "common.h"
 
+//FONLTAB
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Standard functions */
 void mapNew(hotCtx g);
+//FONTLAB
+void mapInitGlyphs(hotCtx g);
+//FONTLAB OVER
+
 int mapFill(hotCtx g);
 void mapReuse(hotCtx g);
 void mapFree(hotCtx g);
@@ -51,5 +60,14 @@ GID mapWinANSI2GID(hotCtx g, int code);
 
 hotGlyphInfo *mapPlatEnc2Glyph(hotCtx g, int code);
 GID mapPlatEnc2GID(hotCtx g, int code);
+
+//FONTLAB
+void mapSortUv(hotCtx g);
+void mapInitSortedArray(hotCtx g);
+
+//FONTLAB
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* MAP_H */

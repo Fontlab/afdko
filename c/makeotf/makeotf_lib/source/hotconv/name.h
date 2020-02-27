@@ -12,6 +12,11 @@
 #define MISSING_MAC_DEFAULT_NAME 0x0002
 #define MISSING_WIN_DEFAULT_NAME 0x0001
 
+//FONTLAB
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Standard functions */
 void nameNew(hotCtx g);
 int nameFill(hotCtx g);
@@ -30,5 +35,10 @@ unsigned short nameAddUser(hotCtx g, char *str);
 unsigned short nameReserveUserID(hotCtx g);
 
 int nameVerifyDefaultNames(hotCtx g, unsigned short nameId);
+
+//FONTLAB
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HOTCONV_NAME_H */

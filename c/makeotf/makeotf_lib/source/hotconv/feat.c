@@ -17,6 +17,19 @@
 #include "BASE.h"
 #include "name.h"
 
+//FONTLAB
+
+#define MAX_NOTE_LEN 1024
+static char str_stderr_msg[MAX_NOTE_LEN];
+extern int zzauto;
+extern int err_fatal_linenum;
+extern char str_err_hotmsg[];
+
+static char err_fatal_filename[1024];
+
+//FONTLAB OVER
+
+
 #define MAX_NUM_LEN 3 /* For glyph ranges */
 #define MAX_PATH 1024
 
@@ -460,8 +473,11 @@ static void CDECL featMsg(int msgType, char *fmt, ...) {
     va_start(ap, fmt);
     vsprintf(msgVar, fmt, ap);
     va_end(ap);
-    sprintf(msg, "%s [%s %d]", msgVar, INCL.file, zzline);
-
+// FONTLAB
+//    sprintf(msg, "%s [%s %d]", msgVar, INCL.file, zzline);
+    sprintf(msg, "%s", msgVar);
+    strncpy(err_fatal_filename, INCL.file, sizeof(err_fatal_filename) - 1);
+        
     hotMsg(g, msgType, msg);
 }
 
@@ -493,6 +509,26 @@ void featSetTagReturnMode(int mode) {
 int featGetTagReturnMode(void) {
     return h->returnMode.tag;
 }
+
+//FONTLAB
+char *featGetErrorFileName(void)
+{
+  return err_fatal_filename;
+}
+
+char *getLastStdErrMessage(void)
+{
+  return str_stderr_msg;
+}
+
+void reinitGlobals()
+{
+  zzauto = 0;
+  err_fatal_linenum = -1;
+  str_err_hotmsg[0] = '\0';
+}
+
+//FONTLAB OVER
 
 /* Add ch to the accumulating name table override string */
 
@@ -875,6 +911,10 @@ static void addVendorString(hotCtx g) {
 
     *dnaNEXT(h->nameString) = '\0';
     setVendId_str(g, h->nameString.array);
+// FONTLAB ???
+//    if (setVendId_str(g, h->nameString.array)) {
+//        featMsg(hotERROR, "Bad string");
+//    }
 }
 
 /* Return 1 if last line was seen. isEOL indicates whether ch is the last char
@@ -1026,7 +1066,11 @@ void zzsyn(char *text, int tok, char *egroup, SetWordType *eset, int etok,
             fprintf(stderr, " in %s", egroup);
         }
     }
-    fprintf(stderr, " [%s %d]\n", INCL.file, zzline);
+    //FONTLAB
+    //    fprintf(stderr, " [%s %d]\n", INCL.file, zzline);
+      fprintf(stderr, "\n");
+      strncpy(err_fatal_filename, INCL.file, sizeof(err_fatal_filename) - 1);
+    
     hotMsg(g, hotFATAL, "aborting because of errors");
 }
 
@@ -1736,7 +1780,8 @@ static HashElement *hashInstallElement(char *name, int existsOK) {
         /* new mark statement; otherwise, we are redefining a class       */
         if (!existsOK) {
             featMsg(hotWARNING, "Glyph class @%s redefined",
-                    g->font.FontName.array, name);
+                  /*g->font.FontName.array, */ //FONTLAB
+                  name);
             MEM_FREE(g, el->name);
             featRecycleNodes(g, el->value.head);
             el->value.head = NULL;
@@ -1745,6 +1790,33 @@ static HashElement *hashInstallElement(char *name, int existsOK) {
     }
     return el;
 }
+
+// FONTLAB
+void _getNamedGlyphClasses(hotCtx g, FeaGlyphClasses res[])
+{
+  unsigned i;
+  featCtx h = g->ctx.feat;
+  HashElement *j;
+  int count = 0;
+  for (i = 0; count < HASH_SIZE && i < HASH_SIZE; i++)
+  {
+    for (j = h->ht[i]; j != NULL; j = j->next)
+    {
+      //  fprintf(stderr, "[%4u] @%s = ", i, j->name);
+      //  featGlyphClassDump(g, j->value.head, '\n', 1);
+
+      res[count].name = j->name;
+      res[count].startGlyph = j->value.head;
+      count++;
+
+      if (count >= HASH_SIZE)
+        break;
+    }
+  }
+  res[count].name = NULL;
+  res[count].startGlyph = NULL;
+}
+// FONTLAB OVER
 
 static void hashFree(featCtx h) {
     unsigned i;
@@ -1770,7 +1842,7 @@ static void hashFree(featCtx h) {
 
 /* Map feature file glyph name to gid; emit error message and return notdef if
    not found (in order to continue until hotQuitOnError() called) */
-static GID featMapGName2GID(hotCtx g, char *gname, int allowNotdef) {
+static GID featMapGName2GID(hotCtx g, char *gname, int allowNotdef, int allowIgnore) { // FONTLAB
     GID gid;
     char *realname;
 
@@ -1780,6 +1852,12 @@ static GID featMapGName2GID(hotCtx g, char *gname, int allowNotdef) {
 
     gid = mapName2GID(g, gname, &realname);
 
+    //FONTLAB
+    if (allowIgnore && gid == GID_UNDEF && strcmp(gname, ".notdef") != 0 && g->cb.featNoGlyph != NULL) {
+      gid = g->cb.featNoGlyph(g->cb.ctx, gname);
+    }
+    //FONTLAB OVER
+    
     /* Return the glyph if found in the font. When allowNotdef is set, we
      * always return and callers should check for GID_UNDEF as we can't return
      * GID_NOTDEF in this case. */
@@ -1787,6 +1865,12 @@ static GID featMapGName2GID(hotCtx g, char *gname, int allowNotdef) {
         return gid;
     }
 
+    //FONTLAB
+    if (gid != GID_UNDEF) {
+      return gid;
+    }
+    //FONTLAB OVER
+  
     if (realname != NULL && strcmp(gname, realname) != 0) {
         featMsg(hotERROR, "Glyph \"%s\" (alias \"%s\") not in font",
                 realname, gname);
@@ -1865,7 +1949,7 @@ static void addAlphaRange(GID first, GID last, char *firstName, char *p,
     ptr = &gname[p - firstName];
 
     for (; *ptr <= q; (*ptr)++) {
-        GID gid = (*ptr == *p) ? first : (*ptr == q) ? last : featMapGName2GID(g, gname, FALSE);
+        GID gid = (*ptr == *p) ? first : (*ptr == q) ? last : featMapGName2GID(g, gname, FALSE, TRUE);
         gcAddGlyph(gid);
     }
 }
@@ -1880,11 +1964,14 @@ static void addNumRange(GID first, GID last, char *firstName, char *p1,
     long firstNum = getNum(p1, numLen);
     long lastNum = getNum(q1, numLen);
 
+    char fmt[128]; // FONTLAB - correction of error with range parsing
+    fmt[0] = '\0';
+
     for (i = firstNum; i <= lastNum; i++) {
         GID gid;
-        char fmt[128];
+        // char fmt[128]; // FONTLAB
         char preNum[MAX_TOKEN];
-        fmt[0] = '\0';
+        // fmt[0] = '\0'; // FONTLAB
         if (i == firstNum) {
             gid = first;
         } else if (i == lastNum) {
@@ -1898,7 +1985,7 @@ static void addNumRange(GID first, GID last, char *firstName, char *p1,
                 preNum[p1 - firstName] = '\0';
             }
             sprintf(gname, fmt, preNum, i, p2);
-            gid = featMapGName2GID(g, gname, FALSE);
+            gid = featMapGName2GID(g, gname, FALSE, TRUE);
         }
         gcAddGlyph(gid);
     }
@@ -2068,6 +2155,10 @@ int featOpenIncludeFile(hotCtx g, char *filename) {
             return 0; /* Indicates no feature file for this font */
         } else {
             InclFile *prev = &h->stack.array[h->stack.cnt - 2];
+            //FONTLAB
+            zzline = prev->lineno;
+            strncpy(err_fatal_filename, prev->file, sizeof(err_fatal_filename) - 1);
+
             hotMsg(g, hotFATAL, "include file <%s> not found [%s %d]",
                    filename, prev->file, prev->lineno);
         }
@@ -2466,7 +2557,9 @@ static int checkTag(Tag tag, int type, int atStart) {
 
                 if (tag != h->curr.script) {
                     if (tagAssign(tag, scriptTag, 1) == 0) {
-                        zzerr("script behavior already specified");
+                      //FONTLAB: we decided to treat this as a warning
+                      //  zzerr("script behavior already specified");
+                      featMsg(hotWARNING, "script behavior already specified (text was \"%s\")", zzlextext);
                     }
 
                     h->language.cnt = 0;
@@ -3012,9 +3105,21 @@ static void prepRule(Tag newTbl, int newlkpType, GNode *targ, GNode *repl) {
         !IS_REF_LAB(h->curr.label) && h->prev.label == h->curr.label) {
         if (h->curr.tbl != h->prev.tbl || h->curr.lkpType !=
                                               h->prev.lkpType) {
+          //FONTLAB: we decided to allow one-glyph (single) rules for Ligature and Multiple types (main type is detected by the first rule of subtable)
+          if (h->curr.tbl == GSUB_ && h->curr.lkpType == GSUBSingle && h->prev.lkpType == GSUBLigature)
+          {
+            h->curr.lkpType = GSUBLigature;
+          }
+          else if (h->curr.tbl == GSUB_ && h->curr.lkpType == GSUBSingle && h->prev.lkpType == GSUBMultiple)
+          {
+            h->curr.lkpType = GSUBMultiple;
+          }
+          else
+          { // FONTLAB OVER
             featMsg(hotFATAL,
                     "Lookup type different from previous "
                     "rules in this lookup block");
+          } // FONTLAB
         } else if (h->curr.lkpFlag != h->prev.lkpFlag) {
             featMsg(hotFATAL,
                     "Lookup flags different from previous "
@@ -4142,6 +4247,7 @@ static Label featGetLabelIndex(char *name) {
     curr = name2NamedLkp(name);
     if (curr == NULL) {
         featMsg(hotFATAL, "lookup name \"%s\" not defined", name);
+        return -1;
     }
     return curr->state.label;
 }
@@ -4431,6 +4537,11 @@ void featReuse(hotCtx g) {
     h->metricsInfo.cnt = 0;
     h->anchorMarkInfo.cnt = 0;
     h->prod.cnt = 0;
+// FONTLAB (memleak fix)    
+    for (i = 0; i < h->markClasses.cnt; i++) {
+        MEM_FREE(g, h->markClasses.array[i]->markClassName);
+    }
+// FONTLAB OVER
     h->markClasses.cnt = 0;
     h->anchorDefs.cnt = 0;
     h->valueDefs.cnt = 0;

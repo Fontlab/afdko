@@ -489,6 +489,8 @@ static void readEncoding(parseCtx h) {
                 length += namet.length;
             } while (psMatchToken(h->ps, psGetToken(h->ps), PS_OPERATOR, "dup"));
         }
+        else //FONTLAB
+          length = 0;
 
         /* Allocate name buffer */
         h->encoding.data.cnt = 0;
@@ -674,7 +676,9 @@ static void readChars(parseCtx h) {
                 if (g->flags & TC_NOOLDOPS && sid < TABLE_LEN(stdcodes)) {
                     /* Save standard-encoded char index */
                     uint8_t code = stdcodes[sid];
-                    h->component.stdindex[code] = h->chars.cnt - 1;
+                    if (code != -1) { // FontLab
+                      h->component.stdindex[code] = h->chars.cnt - 1;
+                    }
                 }
             } /* end if-else sid == SID_UNDEF */
         } else {
@@ -687,17 +691,19 @@ static void readChars(parseCtx h) {
                  ((bname = h->encoding.custom[stdcodes[sid]]) != NULL &&
                   tc_strncmp(name.data, name.length, bname) == 0))) {
                 uint8_t code = stdcodes[sid];
+                if (code != -1) { // FontLab
                 /* Standard encoded glyph save as possible component */
-                new = dnaNEXT(h->component.chars);
-                new->index = h->buf.cnt;
-                new->length = binlen;
-                new->code = code;
-                new->id = sid;
-                new->encrypted = 1;
-
-                /* Save standard-encoded char index */
-                h->component.stdindex[code] =
-                    COMP_CHAR | (h->component.chars.cnt - 1);
+                  new = dnaNEXT(h->component.chars);
+                  new->index = h->buf.cnt;
+                  new->length = binlen;
+                  new->code = code;
+                  new->id = sid;
+                  new->encrypted = 1;
+  
+                  /* Save standard-encoded char index */
+                  h->component.stdindex[code] =
+                      COMP_CHAR | (h->component.chars.cnt - 1);
+                }
             }
         }
 
@@ -981,7 +987,8 @@ static void reorderChars(parseCtx h) {
     h->reorder.index.cnt = 0;
 
     /* We need to sort by SID to make sure that the added .notdef gets moved to array[0]. */
-    qsort(&h->chars.array[0], h->chars.cnt, sizeof(Char), cmpSIDs);
+    if (!(g->flags & TC_NOREORDER)) //FONTLAB
+      qsort(&h->chars.array[0], h->chars.cnt, sizeof(Char), cmpSIDs);
 
     if (h->encoding.std) {
         /* Add StandardEncoding */
@@ -993,7 +1000,8 @@ static void reorderChars(parseCtx h) {
         }
     } else {
         /* Add custom encoding */
-        qsort(&h->chars.array[1], h->chars.cnt - 1, sizeof(Char), cmpSIDs);
+        if (!(g->flags & TC_NOREORDER)) //FONTLAB
+          qsort(&h->chars.array[1], h->chars.cnt - 1, sizeof(Char), cmpSIDs);
 
         for (i = 0; i < 256; i++) {
             SID sid;
@@ -1026,7 +1034,8 @@ static void reorderChars(parseCtx h) {
     }
 
     /* Sort chars by encoding then SID for unencoded glyphs */
-    qsort(&h->chars.array[1], h->chars.cnt - 1, sizeof(Char), cmpChars);
+    if (!(g->flags & TC_NOREORDER)) //FONTLAB
+      qsort(&h->chars.array[1], h->chars.cnt - 1, sizeof(Char), cmpChars);
 
     /* Build encoding, charset, and index arrays (excluding .notdef) */
 
@@ -1985,7 +1994,7 @@ static void saveROS(parseCtx h, DICT *dict, int iKey) {
 
 /* Save string or literal value */
 static void saveString(parseCtx h, DICT *dict, int iKey) {
-    unsigned length;
+    unsigned length = 0; //FONTLAB
     char *strng = NULL; /* Suppress optimizer warning */
     Key *key = &h->keys[iKey];
     psToken *token = &key->value;
@@ -2477,6 +2486,8 @@ void parseNew(tcCtx g) {
     dnaINIT(g->ctx.dnaCtx, h->reorder.charset, 256, 64);
     dnaINIT(g->ctx.dnaCtx, h->reorder.index, 256, 64);
 
+    memset(&h->subset, 0, sizeof(h->subset)); //FONTLAB
+    
     h->firstNotice = 1;
 
     /* Initialize font dict keys. The chameleon key is saved in             */

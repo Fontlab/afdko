@@ -7,6 +7,11 @@
 
 #include "common.h"
 
+//FONTLAB
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define head_ TAG('h', 'e', 'a', 'd')
 
 /* Standard functions */
@@ -16,6 +21,14 @@ void headWrite(hotCtx g);
 void headReuse(hotCtx g);
 void headFree(hotCtx g);
 
+//FONTLAB
+void headSetTime(hotCtx g, unsigned long *tt_time);
+
 #define HEAD_ADJUST_OFFSET (2 * int32) /* Checksum adjustment offset */
+
+//FONTLAB
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HOTCONV_HEAD_H */

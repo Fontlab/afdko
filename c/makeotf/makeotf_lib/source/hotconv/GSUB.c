@@ -445,6 +445,14 @@ void GSUBWrite(hotCtx g) {
     }
 }
 
+//FONTLAB
+unsigned GSUBGetMaxContext(hotCtx g)
+{
+  GSUBCtx h = g->ctx.GSUB;
+  return h->maxContext;
+}
+//FONTLAB END
+
 void GSUBReuse(hotCtx g) {
     GSUBCtx h = g->ctx.GSUB;
     int i;
@@ -462,6 +470,8 @@ void GSUBReuse(hotCtx g) {
         if (sub->extension.use) {
             freeExtension(g, h, sub); /* In addition to the following frees: */
         }
+        //FONTLAB
+        if (sub->tbl) {
         switch (sub->lkpType) {
             case GSUBSingle:
                 freeSingle(g, h, sub);
@@ -503,6 +513,7 @@ void GSUBReuse(hotCtx g) {
 #endif /* HOT_FEAT_SUPPORT */
         }
     }
+    } //FONTLAB
 
     h->new.rules.cnt = 0;
     h->offset.featParam = h->offset.subtable = 0;
@@ -514,7 +525,9 @@ void GSUBReuse(hotCtx g) {
     h->featNameID.cnt = 0;
 
     h->maxContext = 0;
-    otlTableReuse(g, h->otl);
+    //FONTLAB
+    if (h->otl)
+      otlTableReuse(g, h->otl);
 }
 
 void GSUBFree(hotCtx g) {
@@ -1016,7 +1029,9 @@ static void checkAndSortSingle(hotCtx g, GSUBCtx h) {
         SubstRule *prev = curr - 1;
 
         if (curr->targ->gid == prev->targ->gid) {
-            if (curr->repl->gid == prev->repl->gid) {
+          //FONTLAB: we decided to reduce the strictness of input fea-file checking
+          //      if (curr->repl->gid == prev->repl->gid) 
+            {
                 featGlyphDump(g, curr->targ->gid, ',', 0);
                 *dnaNEXT(g->note) = ' ';
                 featGlyphDump(g, curr->repl->gid, '\0', 0);
@@ -1032,13 +1047,16 @@ static void checkAndSortSingle(hotCtx g, GSUBCtx h) {
                 prev->targ = NULL;
                 prev->repl = NULL;
                 nDuplicates++;
-            } else {
-                featGlyphDump(g, curr->targ->gid, '\0', 0);
-                hotMsg(g, hotFATAL,
-                       "Duplicate target glyph for single "
-                       "substitution in %s: %s",
-                       g->error_id_text, g->note.array);
-            }
+            } 
+          /*    FONTLAB
+                       else {
+                          featGlyphDump(g, curr->targ->gid, '\0', 0);
+                          hotMsg(g, hotFATAL,
+                                 "Duplicate target glyph for single "
+                                 "substitution in %s: %s",
+                                 g->error_id_text, g->note.array);
+                      }
+          */
         }
     }
 
@@ -1221,6 +1239,9 @@ static void writeSingle(hotCtx g, GSUBCtx h, Subtable *sub) {
 static void freeSingle1(hotCtx g, GSUBCtx h, Subtable *sub) {
     SingleSubstFormat1 *fmt = sub->tbl;
 
+    //FONTLAB
+      if (!fmt)
+        return;
     MEM_FREE(g, fmt);
 }
 
@@ -1229,6 +1250,9 @@ static void freeSingle1(hotCtx g, GSUBCtx h, Subtable *sub) {
 static void freeSingle2(hotCtx g, GSUBCtx h, Subtable *sub) {
     SingleSubstFormat2 *fmt = sub->tbl;
 
+    //FONTLAB
+      if (!fmt)
+        return;
     MEM_FREE(g, fmt->Substitute);
     MEM_FREE(g, fmt);
 }
@@ -1236,6 +1260,10 @@ static void freeSingle2(hotCtx g, GSUBCtx h, Subtable *sub) {
 /* Free single substitution format table */
 
 static void freeSingle(hotCtx g, GSUBCtx h, Subtable *sub) {
+  //FONTLAB
+    if (!sub || !sub->tbl)
+      return;
+  
     switch (*(unsigned short *)sub->tbl) {
         case 1:
             freeSingle1(g, h, sub);
@@ -1407,7 +1435,8 @@ static void fillMultiple(hotCtx g, GSUBCtx h) {
         /* Check for duplicates */
         if (j != 0 && rule->targ->gid == (rule - 1)->targ->gid) {
             featGlyphDump(g, rule->targ->gid, '\0', 0);
-            hotMsg(g, hotFATAL,
+            //FONTLAB: we decided to reduce the strictness of input fea-file checking
+            hotMsg(g, hotNOTE /*hotFATAL*/,
                    "Duplicate target glyph for multiple substitution in "
                    "%s: %s",
                    g->error_id_text,
@@ -1474,7 +1503,13 @@ static void writeMultiple(hotCtx g, GSUBCtx h, Subtable *sub) {
 static void freeMultiple(hotCtx g, GSUBCtx h, Subtable *sub) {
     MultipleSubstFormat1 *fmt = sub->tbl;
 
-    MEM_FREE(g, fmt->Sequence_[0].Substitute);
+    //FONTLAB
+    if (!fmt)
+      return;
+    
+    if (fmt->Sequence_ != NULL) {
+      MEM_FREE(g, fmt->Sequence_[0].Substitute);
+    }
     MEM_FREE(g, fmt->Sequence_);
     MEM_FREE(g, fmt->Sequence);
     MEM_FREE(g, fmt);
@@ -1615,7 +1650,8 @@ static void fillAlternate(hotCtx g, GSUBCtx h) {
         /* Check for duplicates */
         if (j != 0 && rule->targ->gid == (rule - 1)->targ->gid) {
             featGlyphDump(g, rule->targ->gid, '\0', 0);
-            hotMsg(g, hotFATAL,
+            //FONTLAB: we decided to reduce the strictness of input fea-file checking
+                  hotMsg(g, hotNOTE /*hotFATAL*/,
                    "Duplicate target glyph for alternate substitution in "
                    "%s: %s",
                    g->error_id_text,
@@ -1681,7 +1717,14 @@ static void writeAlternate(hotCtx g, GSUBCtx h, Subtable *sub) {
 static void freeAlternate(hotCtx g, GSUBCtx h, Subtable *sub) {
     AlternateSubstFormat1 *fmt = sub->tbl;
 
-    MEM_FREE(g, fmt->AlternateSet_[0].Alternate);
+    //FONTLAB
+    if (!fmt)
+      return;
+    
+    if (fmt->AlternateSet_ != NULL) {
+      MEM_FREE(g, fmt->AlternateSet_[0].Alternate);
+    }
+    
     MEM_FREE(g, fmt->AlternateSet_);
     MEM_FREE(g, fmt->AlternateSet);
     MEM_FREE(g, fmt);
@@ -1763,7 +1806,9 @@ static void checkAndSortLigature(hotCtx g, GSUBCtx h) {
         SubstRule *prev = curr - 1;
 
         if (cmpLigature(curr, prev) == 0) {
-            if (curr->repl->gid == prev->repl->gid) {
+          //FONTLAB: we decided to reduce the strictness of input fea-file checking
+          //      if (curr->repl->gid == prev->repl->gid) 
+            {
                 featPatternDump(g, curr->targ, ',', 0);
                 *dnaNEXT(g->note) = ' ';
                 featGlyphDump(g, curr->repl->gid, '\0', 0);
@@ -1779,18 +1824,21 @@ static void checkAndSortLigature(hotCtx g, GSUBCtx h) {
                 prev->targ = NULL;
                 prev->repl = NULL;
                 nDuplicates++;
-            } else {
-                featPatternDump(g, curr->targ, '\0', 0);
-                hotMsg(g, hotFATAL,
-                       "Duplicate target sequence but different "
-                       "replacement glyphs in ligature substitutions in "
-                       "%s: %s",
-                       g->error_id_text,
-                       g->note.array);
-            }
+            } 
+          /* //FONTLAB
+          else {
+                          featPatternDump(g, curr->targ, '\0', 0);
+                          hotMsg(g, hotFATAL,
+                                 "Duplicate target sequence but different "
+                                 "replacement glyphs in ligature substitutions in "
+                                 "%s: %s",
+                                 g->error_id_text,
+                                 g->note.array);
+                      }
+          */
         }
     }
-
+    
     if (nDuplicates > 0) {
         /* Duplicates sink to the bottom */
         qsort(h->new.rules.array, h->new.rules.cnt, sizeof(SubstRule),
@@ -2664,6 +2712,10 @@ static void freeChain1(hotCtx g, GSUBCtx h, Subtable *sub) {
 
     /* xxx */
 
+    //FONTLAB
+    if (!fmt)
+      return;
+
     MEM_FREE(g, fmt);
 }
 
@@ -2674,6 +2726,10 @@ static void freeChain2(hotCtx g, GSUBCtx h, Subtable *sub) {
 
     /* xxx */
 
+    //FONTLAB
+    if (!fmt)
+      return;
+
     MEM_FREE(g, fmt);
 }
 
@@ -2681,6 +2737,10 @@ static void freeChain2(hotCtx g, GSUBCtx h, Subtable *sub) {
 
 static void freeChain3(hotCtx g, GSUBCtx h, Subtable *sub) {
     ChainContextSubstFormat3 *fmt = sub->tbl;
+
+    //FONTLAB
+    if (!fmt)
+      return;
 
     if (fmt->Backtrack != NULL) {
         MEM_FREE(g, fmt->Backtrack);
@@ -2700,6 +2760,10 @@ static void freeChain3(hotCtx g, GSUBCtx h, Subtable *sub) {
 /* Free Chain substitution format table */
 
 static void freeChain(hotCtx g, GSUBCtx h, Subtable *sub) {
+  //FONTLAB
+    if (!sub || !sub->tbl)
+      return;
+  
     switch (*(unsigned short *)sub->tbl) {
         case 1:
             freeChain1(g, h, sub);
@@ -2774,6 +2838,8 @@ static void fillReverseChain1(hotCtx g, GSUBCtx h, otlTbl otl, Subtable *sub,
     GNode *pInput = NULL;
     GNode *pLook = NULL;
     GNode *p, *r;
+    //FONTLAB
+    GNode *saveP = NULL;
     unsigned subCount = 0;
 
     SubstRule *rule = &h->new.rules.array[inx];
@@ -2812,6 +2878,8 @@ static void fillReverseChain1(hotCtx g, GSUBCtx h, otlTbl otl, Subtable *sub,
     /* again.                                                              */
     if (rule->repl != NULL) {
         /* No need for this whole block, if subCount === 0. */
+        //FONTLAB
+        saveP = pInput;
         for (p = pInput, r = rule->repl; p != NULL; p = p->nextCl, r = r->nextCl) {
             /* I require in feat.c that pInput and repl lists have the same length */
             p->nextSeq = r;
@@ -2871,6 +2939,10 @@ static void fillReverseChain1(hotCtx g, GSUBCtx h, otlTbl otl, Subtable *sub,
     }
 
     sub->tbl = fmt;
+    
+    //FONTLAB
+    if (saveP)
+      saveP->nextSeq = NULL; // FONTLAB: We had problems in recycleNode without this nulling, because of double links to the same nodes in targ and repl
 }
 
 static void fillReverseChain(hotCtx g, GSUBCtx h) {
@@ -2953,6 +3025,10 @@ static void writeReverseChain(hotCtx g, GSUBCtx h, Subtable *sub) {
 static void freeReverseChain(hotCtx g, GSUBCtx h, Subtable *sub) {
     ReverseChainContextSubstFormat1 *fmt = sub->tbl;
 
+    //FONTLAB
+    if (!fmt)
+      return;
+    
     if (fmt->Backtrack != NULL) {
         MEM_FREE(g, fmt->Backtrack);
     }
@@ -3000,6 +3076,11 @@ static void freeExtension(hotCtx g, GSUBCtx h, Subtable *sub) {
 
     otlTableReuse(g, sub->extension.otl);
     otlTableFree(g, sub->extension.otl);
+    
+    //FONTLAB
+    if (!fmt)
+      return;
+    
     MEM_FREE(g, fmt);
 }
 

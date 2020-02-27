@@ -10,6 +10,11 @@
 
 #define GSUB_ TAG('G', 'S', 'U', 'B')
 
+//FONTLAB
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Standard functions */
 
 void GSUBNew(hotCtx g);
@@ -18,6 +23,8 @@ void GSUBWrite(hotCtx g);
 void GSUBReuse(hotCtx g);
 void GSUBFree(hotCtx g);
 
+//FONTLAB
+unsigned GSUBGetMaxContext(hotCtx g);
 /* Supplementary functions (See otl.h for script, language, feature,
    and lookup flag definitions) */
 void GSUBFeatureBegin(hotCtx g, Tag script, Tag language, Tag feature);
@@ -71,5 +78,10 @@ void GSUBAddCVParam(hotCtx g, void *param);
    GSUBLookupEnd(g);
 
    GSUBFeatureEnd(g); */
+
+//FONTLAB
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HOTCONV_GSUB_H */

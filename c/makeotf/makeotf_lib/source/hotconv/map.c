@@ -465,17 +465,27 @@ hotGlyphInfo *mapName2Glyph(hotCtx g, char *gname, char **useAliasDB) {
 
 void mapGID2Name(hotCtx g, GID gid, char *msg) {
     int len;
-    hotGlyphInfo *hGID = &g->font.glyphs.array[gid];
+    //FONTLAB
+    //hotGlyphInfo *hGID = &g->font.glyphs.array[gid];
+    hotGlyphInfo *hGID = (gid < g->font.glyphs.cnt) ? &g->font.glyphs.array[gid] : NULL;
 
-    if (hGID->srcName == NULL) {
+    if (!hGID)
+    {
+      strcpy(msg, "[null]");
+      len = strlen(msg);
+    }
+    else
+    {
+      if (hGID->srcName == NULL) {
         sprintf(msg, "%s", hGID->gname.str);
         len = strlen(msg);
-    } else {
+      } else {
         if (g->convertFlags & HOT_CONVERT_FINAL_NAMES)
-            sprintf(msg, "%s", hGID->gname.str);
+          sprintf(msg, "%s", hGID->gname.str);
         else
-            sprintf(msg, "%s", hGID->srcName);
+          sprintf(msg, "%s", hGID->srcName);
         len = strlen(msg);
+      }
     }
 }
 
@@ -2676,12 +2686,59 @@ static void initGlyphs(hotCtx g) {
     */
 }
 
+//FONTLAB
+void mapInitGlyphs(hotCtx g)
+{
+  initGlyphs(g);
+}
+
+/* Initialize both CID and non-CID fonts */
+void mapInitSortedArray(hotCtx g)
+{
+  mapCtx h = g->ctx.map;
+  long i;
+  long nGlyphs = g->font.glyphs.cnt;
+
+  dnaSET_CNT(h->sort.gname, nGlyphs);	/* Includes .notdef/CID 0 */
+
+  if (!IS_CID(g))
+    for (i = 0; i < 256; i++)
+      h->sort.platEnc[i] = NULL;
+
+  for (i = 0; i < nGlyphs; i++)
+  {
+    hotGlyphInfo *gi = &g->font.glyphs.array[i];
+    h->sort.gname.array[i] = gi;	/* Init sort ptrs to array elements */
+    if (gi->uv != UV_UNDEF)
+    {
+      UV code = gi->uv;
+      gi->uv = UV_UNDEF;
+
+      addUVToGlyph(g, gi, code);
+    };
+  }
+
+  /* Sort by glyph name/CID */
+  qsort(h->sort.gname.array, h->sort.gname.cnt, sizeof(hotGlyphInfo *), IS_CID(g) ? cmpCID : cmpGlyphName);
+  qsort(h->sort.uv.array, h->sort.uv.cnt, sizeof(hotGlyphInfo *), cmpUV);
+}
+
+void mapSortUv(hotCtx g)
+{
+  mapCtx h = g->ctx.map;
+
+  qsort(h->sort.uv.array, h->sort.uv.cnt, sizeof(hotGlyphInfo *), cmpUV);
+}
+
 /* Initialize both CID and non-CID fonts */
 static void mapInit(hotCtx g) {
     initGlyphs(g);
     if (!IS_CID(g)) {
+      //FONTLAB
+      if ((g->convertFlags & HOT_CUSTOM_UNICODE) == 0) {
         assignUVs(g);
         setCodePages(g);
+      }
     }
 
     /* non-CID: gname and uv lookup utilities ready to be used.             */
@@ -2700,9 +2757,13 @@ void mapApplyReencoding(hotCtx g, hotEncoding *comEncoding,
     if (IS_CID(g)) {
         return;
     }
-
-    mapInit(g); /* This assigns UVs */
-
+    
+    //FONTLAB
+    if ((g->convertFlags & HOT_CUSTOM_UNICODE) == 0)
+      mapInit(g); /* This assigns UVs */
+    else
+      setCodePages(g);
+    
     if (g->font.flags & HOT_WIN) {
         reenc = comEncoding;
     } else if (g->font.flags & HOT_MAC) {

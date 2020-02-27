@@ -7,6 +7,11 @@
 
 #include "common.h"
 
+//FONTLAB
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define OS_2_ TAG('O', 'S', '/', '2')
 
 /* Standard functions */
@@ -35,5 +40,10 @@ void OS_2SetWeightClass(hotCtx g, unsigned short weightClass);
 void OS_2SetWidthClass(hotCtx g, unsigned short widthClass);
 void OS_2LowerOpticalPointSize(hotCtx g, unsigned short opSize);
 void OS_2UpperOpticalPointSize(hotCtx g, unsigned short opSize);
+
+//FONTLAB
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HOTCONV_OS_2_H */

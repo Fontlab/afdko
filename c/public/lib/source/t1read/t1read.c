@@ -162,7 +162,7 @@ struct t1rCtx_ {
         float ForceBoldThreshold;
     } mm;
     pstCtx pst; /* pstoken lib context */
-    dnaCtx dna; /* dynarr lib context */
+    dnaCtxPtr dna; /* dynarr lib context */
     struct      /* Client callbacks */
     {
         ctlMemoryCallbacks mem;
